@@ -1,0 +1,533 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.4.63.48766",
+      "templateHash": "8772933008015727100"
+    }
+  },
+  "parameters": {
+    "customerName": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string"
+    },
+    "vmAdminUsername": {
+      "type": "string"
+    },
+    "vmAdminPassword": {
+      "type": "string"
+    },
+    "vmTimeZone": {
+      "type": "string"
+    }
+  },
+  "functions": [],
+  "variables": {
+    "longName": "[format('{0}-{1}-{2}', parameters('customerName'), parameters('region'), parameters('environment'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "vNetDeploy",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "longName": {
+            "value": "[variables('longName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.63.48766",
+              "templateHash": "18152877055476373777"
+            }
+          },
+          "parameters": {
+            "longName": {
+              "type": "string"
+            }
+          },
+          "functions": [],
+          "variables": {
+            "azureBastionSubnetAddressPrefix": "10.0.1.0/27",
+            "azureBastionSubnetName": "AzureBastionSubnet",
+            "appSubnetAddressPrefix": "10.0.2.0/24",
+            "appSubnetName": "app"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2021-02-01",
+              "name": "[format('vnet-{0}', parameters('longName'))]",
+              "location": "[resourceGroup().location]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "10.0.0.0/16"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "[variables('azureBastionSubnetName')]",
+                    "properties": {
+                      "addressPrefix": "[variables('azureBastionSubnetAddressPrefix')]",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('nsg-bastion-{0}', parameters('longName')))]"
+                      }
+                    }
+                  },
+                  {
+                    "name": "[variables('appSubnetName')]",
+                    "properties": {
+                      "addressPrefix": "[variables('appSubnetAddressPrefix')]",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('nsg-app-{0}', parameters('longName')))]"
+                      }
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', format('nsg-app-{0}', parameters('longName')))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', format('nsg-bastion-{0}', parameters('longName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2021-02-01",
+              "name": "[format('nsg-app-{0}', parameters('longName'))]",
+              "location": "[resourceGroup().location]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "AllowBastionInbound",
+                    "properties": {
+                      "access": "Allow",
+                      "description": "Allow from Bastion subnet",
+                      "direction": "Inbound",
+                      "protocol": "Tcp",
+                      "priority": 100,
+                      "sourceAddressPrefix": "[variables('azureBastionSubnetAddressPrefix')]",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "[variables('appSubnetAddressPrefix')]",
+                      "destinationPortRanges": [
+                        "22",
+                        "3389"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "DenyAllOthersInbound",
+                    "properties": {
+                      "access": "Deny",
+                      "description": "Deny all others",
+                      "direction": "Inbound",
+                      "protocol": "*",
+                      "priority": 200,
+                      "sourceAddressPrefix": "*",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "VirtualNetwork",
+                      "destinationPortRange": "*"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2021-02-01",
+              "name": "[format('nsg-bastion-{0}', parameters('longName'))]",
+              "location": "[resourceGroup().location]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "AllowHttpsInbound",
+                    "properties": {
+                      "access": "Allow",
+                      "description": "Allow from Internet Inbound",
+                      "direction": "Inbound",
+                      "protocol": "Tcp",
+                      "priority": 120,
+                      "sourceAddressPrefix": "Internet",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "443"
+                    }
+                  },
+                  {
+                    "name": "AllowGatewayManagerInbound",
+                    "properties": {
+                      "access": "Allow",
+                      "description": "Allow GatewayManager Inbound",
+                      "direction": "Inbound",
+                      "protocol": "Tcp",
+                      "priority": 130,
+                      "sourceAddressPrefix": "GatewayManager",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "443"
+                    }
+                  },
+                  {
+                    "name": "AllowAzureLoadBalancerInbound",
+                    "properties": {
+                      "access": "Allow",
+                      "description": "Allow LoadBalancer Inbound",
+                      "direction": "Inbound",
+                      "protocol": "Tcp",
+                      "priority": 140,
+                      "sourceAddressPrefix": "AzureLoadBalancer",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "443"
+                    }
+                  },
+                  {
+                    "name": "AllowBastionHostCommunication",
+                    "properties": {
+                      "access": "Allow",
+                      "description": "Allow Bastion Host Communication Inbound",
+                      "direction": "Inbound",
+                      "protocol": "*",
+                      "priority": 150,
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "VirtualNetwork",
+                      "destinationPortRanges": [
+                        "8080",
+                        "5701"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "AllowSshRdpOutbound",
+                    "properties": {
+                      "access": "Allow",
+                      "description": "Allow Ssh Rdp Outbound",
+                      "direction": "Outbound",
+                      "protocol": "*",
+                      "priority": 100,
+                      "sourceAddressPrefix": "*",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "VirtualNetwork",
+                      "destinationPortRanges": [
+                        "22",
+                        "3389"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "AllowAzureCloudOutbound",
+                    "properties": {
+                      "access": "Allow",
+                      "description": "Allow Azure Cloud Outbound",
+                      "direction": "Outbound",
+                      "protocol": "Tcp",
+                      "priority": 110,
+                      "sourceAddressPrefix": "*",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "AzureCloud",
+                      "destinationPortRange": "443"
+                    }
+                  },
+                  {
+                    "name": "AllowBastionommunication",
+                    "properties": {
+                      "access": "Allow",
+                      "description": "Allow Bastion Communication Outbound",
+                      "direction": "Outbound",
+                      "protocol": "*",
+                      "priority": 120,
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "VirtualNetwork",
+                      "destinationPortRanges": [
+                        "8080",
+                        "5701"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "AllowGetSessionInformation",
+                    "properties": {
+                      "access": "Allow",
+                      "description": "Allow Get Session",
+                      "direction": "Outbound",
+                      "protocol": "*",
+                      "priority": 130,
+                      "sourceAddressPrefix": "*",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "Internet",
+                      "destinationPortRanges": [
+                        "80",
+                        "443"
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "outputs": {
+            "vNetName": {
+              "type": "string",
+              "value": "[format('vnet-{0}', parameters('longName'))]"
+            },
+            "applicationSubnetName": {
+              "type": "string",
+              "value": "[variables('appSubnetName')]"
+            },
+            "bastionSubnetName": {
+              "type": "string",
+              "value": "[variables('azureBastionSubnetName')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "bastionDeploy",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "vNetName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'vNetDeploy'), '2019-10-01').outputs.vNetName.value]"
+          },
+          "bastionSubnetName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'vNetDeploy'), '2019-10-01').outputs.bastionSubnetName.value]"
+          },
+          "longName": {
+            "value": "[variables('longName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.63.48766",
+              "templateHash": "17500152497861716953"
+            }
+          },
+          "parameters": {
+            "longName": {
+              "type": "string"
+            },
+            "vNetName": {
+              "type": "string"
+            },
+            "bastionSubnetName": {
+              "type": "string"
+            }
+          },
+          "functions": [],
+          "variables": {
+            "fullyQualifiedBastionSubnetName": "[format('{0}/{1}', parameters('vNetName'), parameters('bastionSubnetName'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/publicIPAddresses",
+              "apiVersion": "2021-02-01",
+              "name": "[format('pip-bastion-{0}', parameters('longName'))]",
+              "location": "[resourceGroup().location]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "publicIPAllocationMethod": "Static"
+              }
+            },
+            {
+              "type": "Microsoft.Network/bastionHosts",
+              "apiVersion": "2021-02-01",
+              "name": "[format('bastion-{0}', parameters('longName'))]",
+              "location": "[resourceGroup().location]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "ipConfigurations": [
+                  {
+                    "name": "bastion",
+                    "properties": {
+                      "publicIPAddress": {
+                        "id": "[resourceId('Microsoft.Network/publicIPAddresses', format('pip-bastion-{0}', parameters('longName')))]"
+                      },
+                      "subnet": {
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', split(variables('fullyQualifiedBastionSubnetName'), '/')[0], split(variables('fullyQualifiedBastionSubnetName'), '/')[1])]"
+                      }
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', format('pip-bastion-{0}', parameters('longName')))]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'vNetDeploy')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "vmDeploy",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "adminPassword": {
+            "value": "[parameters('vmAdminPassword')]"
+          },
+          "adminUsername": {
+            "value": "[parameters('vmAdminUsername')]"
+          },
+          "applicationSubnetName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'vNetDeploy'), '2019-10-01').outputs.applicationSubnetName.value]"
+          },
+          "longName": {
+            "value": "[variables('longName')]"
+          },
+          "timeZone": {
+            "value": "[parameters('vmTimeZone')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.63.48766",
+              "templateHash": "6488249211873765987"
+            }
+          },
+          "parameters": {
+            "longName": {
+              "type": "string"
+            },
+            "applicationSubnetName": {
+              "type": "string"
+            },
+            "adminUsername": {
+              "type": "string"
+            },
+            "adminPassword": {
+              "type": "string"
+            },
+            "timeZone": {
+              "type": "string"
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.Network/networkInterfaces",
+              "apiVersion": "2021-02-01",
+              "name": "[format('nic-{0}', parameters('longName'))]",
+              "location": "[resourceGroup().location]",
+              "properties": {
+                "ipConfigurations": [
+                  {
+                    "name": "ipConfig",
+                    "properties": {
+                      "subnet": {
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', split(parameters('applicationSubnetName'), '/')[0], split(parameters('applicationSubnetName'), '/')[1])]"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Compute/virtualMachines",
+              "apiVersion": "2021-03-01",
+              "name": "[format('vm-{0}', parameters('longName'))]",
+              "location": "[resourceGroup().location]",
+              "properties": {
+                "hardwareProfile": {
+                  "vmSize": "Standard_B2ms"
+                },
+                "osProfile": {
+                  "computerName": "[format('vm-{0}', parameters('longName'))]",
+                  "adminUsername": "[parameters('adminUsername')]",
+                  "adminPassword": "[parameters('adminPassword')]",
+                  "windowsConfiguration": {
+                    "timeZone": "[parameters('timeZone')]",
+                    "enableAutomaticUpdates": true,
+                    "provisionVMAgent": true
+                  }
+                },
+                "storageProfile": {
+                  "imageReference": {
+                    "offer": "WindowsServer",
+                    "publisher": "MicrosoftWindowsServer",
+                    "sku": "2019-Datacenter",
+                    "version": "latest"
+                  },
+                  "osDisk": {
+                    "osType": "Windows",
+                    "name": "os",
+                    "createOption": "FromImage"
+                  },
+                  "dataDisks": [
+                    {
+                      "lun": 0,
+                      "name": "data",
+                      "createOption": "Empty",
+                      "diskSizeGB": 10
+                    }
+                  ]
+                },
+                "networkProfile": {
+                  "networkInterfaces": [
+                    {
+                      "id": "[resourceId('Microsoft.Network/networkInterfaces', format('nic-{0}', parameters('longName')))]"
+                    }
+                  ]
+                },
+                "diagnosticsProfile": {
+                  "bootDiagnostics": {
+                    "enabled": true
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/networkInterfaces', format('nic-{0}', parameters('longName')))]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'vNetDeploy')]"
+      ]
+    }
+  ]
+}
