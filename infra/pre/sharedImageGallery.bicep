@@ -6,20 +6,6 @@ resource sharedImageGallery 'Microsoft.Compute/galleries@2020-09-30' = {
   location: resourceGroup().location
 }
 
-resource demoApplicationImageDefinition 'Microsoft.Compute/galleries/images@2020-09-30' = {
-  name: '${sharedImageGallery.name}/img-demoApp'
-  location: resourceGroup().location
-  properties: {
-    osType: 'Windows'
-    osState: 'Generalized'
-    identifier: {
-      offer: 'DemoApp'
-      publisher: 'DemoApp_Inc'
-      sku: '1.0.0'
-    }
-  }
-}
-
 resource imageBuilderUserAssignedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
   name: 'mi-${longName}'
   location: resourceGroup().location
@@ -62,3 +48,6 @@ resource imageBuilderUserAssignedIdentityRoleAssignment 'Microsoft.Authorization
     roleDefinitionId: contributorRoleDefinition
   } 
 }
+
+output sharedImageGalleryName string = sharedImageGallery.name
+output imageBuilderUserAssignedIdentityName string = imageBuilderUserAssignedIdentity.name

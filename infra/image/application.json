@@ -7,6 +7,12 @@
 		},
 		"userAssignedIdentityId": {
 			"type": "string"
+		},
+		"sharedImageGalleryName": {
+			"type": "string"
+		},
+		"imageDefinitionName": {
+			"type": "string"
 		}
 	},
 	"resources": [
@@ -32,8 +38,24 @@
 					"sku": "2019-Datacenter",
 					"version": "latest"
 				},
-				"customize": {},
-				"distribute": {}
+				"customize": [
+					{
+						"type": "PowerShell",
+						"name": "settingUpMgmtAgtPath",
+						"runElevated": false,
+						"inline": [
+							"mkdir c:\\buildActions",
+							"echo Azure-Image-Builder-Was-Here  > c:\\buildActions\\buildActionsOutput.txt"
+						]
+					}
+				],
+				"distribute": [
+					{
+						"type": "SharedImage",
+						"galleryImageId": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Compute/galleries/', parameters('sharedImageGalleryName'), '/images/', parameters('imageDefinitionName'))]",
+						"runOutputName": "runOutput"
+					}
+				]
 			}
 		}
 	]

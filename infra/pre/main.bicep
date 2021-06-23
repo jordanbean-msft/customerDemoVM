@@ -17,6 +17,15 @@ module storageAccount 'storage.bicep' = {
   name: 'storageAccountDeploy'
   params: {
     shortName: appName
-  }
-  
+  }  
+}
+
+module applicationImageTemplate 'applicationImageTemplate.bicep' = {
+  name: 'applicationImageTemplate'
+  params: {
+    imageBuilderUserAssignedIdentityName: sharedImageGallery.outputs.imageBuilderUserAssignedIdentityName
+    longName: longName
+    region: region
+    sharedImageGalleryName: sharedImageGallery.outputs.sharedImageGalleryName
+  }  
 }
