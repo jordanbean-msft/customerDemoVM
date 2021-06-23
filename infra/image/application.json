@@ -1,0 +1,40 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"imageTemplateName": {
+			"type": "string"
+		},
+		"userAssignedIdentityId": {
+			"type": "string"
+		}
+	},
+	"resources": [
+		{
+			"name": "[parameters('imageTemplateName')]",
+			"type": "Microsoft.VirtualMachineImages/imageTemplates",
+			"apiVersion": "2020-02-14",
+			"location": "[resourceGroup().location]",
+			"identity": {
+				"userAssignedIdentities": {
+					"[parameters('userAssignedIdentityId')]": {}
+				}
+			},
+			"dependsOn": [],
+			"properties": {
+				"vmProfile": {
+					"osDiskSizeGB": 100
+				},
+				"source": {
+					"type": "PlatformImage",
+					"publisher": "MicrosoftWindowsServer",
+					"offer": "WindowsServer",
+					"sku": "2019-Datacenter",
+					"version": "latest"
+				},
+				"customize": {},
+				"distribute": {}
+			}
+		}
+	]
+}

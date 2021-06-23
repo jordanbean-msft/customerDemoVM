@@ -8,6 +8,7 @@ param vmAdminPassword string
 param vmTimeZone string
 
 var longName = '${customerName}-${region}-${environment}'
+var shortName = '${customerName}${region}${environment}'
 
 module vNetModule 'vnet.bicep' = {
   name: 'vNetDeploy'

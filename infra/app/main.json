@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.4.63.48766",
-      "templateHash": "8772933008015727100"
+      "templateHash": "15824988577762899672"
     }
   },
   "parameters": {
@@ -19,10 +19,10 @@
       "type": "string"
     },
     "vmAdminUsername": {
-      "type": "string"
+      "type": "secureString"
     },
     "vmAdminPassword": {
-      "type": "string"
+      "type": "secureString"
     },
     "vmTimeZone": {
       "type": "string"
@@ -30,7 +30,8 @@
   },
   "functions": [],
   "variables": {
-    "longName": "[format('{0}-{1}-{2}', parameters('customerName'), parameters('region'), parameters('environment'))]"
+    "longName": "[format('{0}-{1}-{2}', parameters('customerName'), parameters('region'), parameters('environment'))]",
+    "shortName": "[format('{0}{1}{2}', parameters('customerName'), parameters('region'), parameters('environment'))]"
   },
   "resources": [
     {
@@ -395,6 +396,92 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2019-10-01",
+      "name": "sharedImageGalleryDeploy",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "longName": {
+            "value": "[variables('longName')]"
+          },
+          "shortName": {
+            "value": "[variables('shortName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.63.48766",
+              "templateHash": "11728229454013970124"
+            }
+          },
+          "parameters": {
+            "longName": {
+              "type": "string"
+            },
+            "shortName": {
+              "type": "string"
+            }
+          },
+          "functions": [],
+          "variables": {
+            "contributorRoleDefinition": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c', subscription().subscriptionId)]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Compute/galleries",
+              "apiVersion": "2020-09-30",
+              "name": "[format('sig{0}', parameters('shortName'))]",
+              "location": "[resourceGroup().location]"
+            },
+            {
+              "type": "Microsoft.Compute/galleries/images",
+              "apiVersion": "2020-09-30",
+              "name": "[format('{0}/img-demoApp', format('sig{0}', parameters('shortName')))]",
+              "location": "[resourceGroup().location]",
+              "properties": {
+                "osType": "Windows",
+                "osState": "Generalized",
+                "identifier": {
+                  "offer": "DemoApp",
+                  "publisher": "DemoApp_Inc",
+                  "sku": "1.0.0"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Compute/galleries', format('sig{0}', parameters('shortName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2018-11-30",
+              "name": "[format('mi-{0}', parameters('longName'))]",
+              "location": "[resourceGroup().location]"
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2021-04-01-preview",
+              "name": "[guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('mi-{0}', parameters('longName'))), variables('contributorRoleDefinition'))]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('mi-{0}', parameters('longName')))).principalId]",
+                "roleDefinitionId": "[variables('contributorRoleDefinition')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('mi-{0}', parameters('longName')))]"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
       "name": "vmDeploy",
       "properties": {
         "expressionEvaluationOptions": {
@@ -408,11 +495,17 @@
           "adminUsername": {
             "value": "[parameters('vmAdminUsername')]"
           },
+          "vNetName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'vNetDeploy'), '2019-10-01').outputs.vNetName.value]"
+          },
           "applicationSubnetName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'vNetDeploy'), '2019-10-01').outputs.applicationSubnetName.value]"
           },
           "longName": {
             "value": "[variables('longName')]"
+          },
+          "customerName": {
+            "value": "[parameters('customerName')]"
           },
           "timeZone": {
             "value": "[parameters('vmTimeZone')]"
@@ -425,27 +518,36 @@
             "_generator": {
               "name": "bicep",
               "version": "0.4.63.48766",
-              "templateHash": "6488249211873765987"
+              "templateHash": "3906000366667280962"
             }
           },
           "parameters": {
             "longName": {
               "type": "string"
             },
+            "customerName": {
+              "type": "string"
+            },
+            "vNetName": {
+              "type": "string"
+            },
             "applicationSubnetName": {
               "type": "string"
             },
             "adminUsername": {
-              "type": "string"
+              "type": "secureString"
             },
             "adminPassword": {
-              "type": "string"
+              "type": "secureString"
             },
             "timeZone": {
               "type": "string"
             }
           },
           "functions": [],
+          "variables": {
+            "fullyQualifiedApplicationSubnetName": "[format('{0}/{1}', parameters('vNetName'), parameters('applicationSubnetName'))]"
+          },
           "resources": [
             {
               "type": "Microsoft.Network/networkInterfaces",
@@ -458,7 +560,7 @@
                     "name": "ipConfig",
                     "properties": {
                       "subnet": {
-                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', split(parameters('applicationSubnetName'), '/')[0], split(parameters('applicationSubnetName'), '/')[1])]"
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', split(variables('fullyQualifiedApplicationSubnetName'), '/')[0], split(variables('fullyQualifiedApplicationSubnetName'), '/')[1])]"
                       }
                     }
                   }
@@ -475,7 +577,7 @@
                   "vmSize": "Standard_B2ms"
                 },
                 "osProfile": {
-                  "computerName": "[format('vm-{0}', parameters('longName'))]",
+                  "computerName": "[format('vm{0}', parameters('customerName'))]",
                   "adminUsername": "[parameters('adminUsername')]",
                   "adminPassword": "[parameters('adminPassword')]",
                   "windowsConfiguration": {
@@ -520,6 +622,24 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Network/networkInterfaces', format('nic-{0}', parameters('longName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DevTestLab/schedules",
+              "apiVersion": "2018-09-15",
+              "name": "[format('shutdown-computevm-{0}', format('vm-{0}', parameters('longName')))]",
+              "location": "[resourceGroup().location]",
+              "properties": {
+                "status": "Enabled",
+                "taskType": "ComputeVmShutdownTask",
+                "dailyRecurrence": {
+                  "time": "1700"
+                },
+                "timeZoneId": "[parameters('timeZone')]",
+                "targetResourceId": "[resourceId('Microsoft.Compute/virtualMachines', format('vm-{0}', parameters('longName')))]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', format('vm-{0}', parameters('longName')))]"
               ]
             }
           ]
