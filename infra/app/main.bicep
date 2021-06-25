@@ -6,9 +6,11 @@ param vmAdminUsername string
 @secure()
 param vmAdminPassword string
 param vmTimeZone string
+param sharedImageGalleryName string
+param demoApplicationImageDefinitionName string
+param demoApplicationImageVersion string
 
 var longName = '${customerName}-${region}-${environment}'
-var shortName = '${customerName}${region}${environment}'
 
 module vNetModule 'vnet.bicep' = {
   name: 'vNetDeploy'
@@ -26,7 +28,7 @@ module bastionModule 'bastion.bicep' = {
   }  
 }
 
-module vm 'vm.bicep' = {
+module vmModule 'vm.bicep' = {
   name: 'vmDeploy'
   params: {
     adminPassword: vmAdminPassword
@@ -36,5 +38,27 @@ module vm 'vm.bicep' = {
     longName: longName
     customerName: customerName
     timeZone: vmTimeZone
+    sharedImageGalleryName: sharedImageGalleryName
+    demoApplicationImageDefinitionName: demoApplicationImageDefinitionName
+    demoApplicationImageVersion: demoApplicationImageVersion
+    loadBalancerName: loadBalancerModule.outputs.loadBalancerName
+    loadBalancerBackendAddressPoolName: loadBalancerModule.outputs.loadBalancerBackendAddressPoolName
+  }
+}
+
+module loadBalancerModule 'loadBalancer.bicep' = {
+  name: 'loadBalancerDeploy'
+  params: {
+    applicationSubnetName: vNetModule.outputs.applicationSubnetName
+    longName: longName
+    vNetName: vNetModule.outputs.vNetName
+  }  
+}
+
+module frontDoorModule 'frontDoor.bicep' = {
+  name: 'frontDoorModule'
+  params: {
+    loadBalancerPublicIpAddressName: loadBalancerModule.outputs.loadBalancerPublicIpAddressName
+    longName: longName
   }
 }

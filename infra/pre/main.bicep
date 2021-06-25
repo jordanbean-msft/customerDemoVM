@@ -1,5 +1,6 @@
 param appName string
 param region string
+param longRegion string
 param environment string
 
 var longName = '${appName}-${region}-${environment}'
@@ -10,6 +11,7 @@ module sharedImageGallery 'sharedImageGallery.bicep' = {
   params: {
     longName: longName
     shortName: shortName
+    storageAccountName: storageAccount.outputs.storageAccountName
   }  
 }
 
@@ -25,7 +27,9 @@ module applicationImageTemplate 'applicationImageTemplate.bicep' = {
   params: {
     imageBuilderUserAssignedIdentityName: sharedImageGallery.outputs.imageBuilderUserAssignedIdentityName
     longName: longName
-    region: region
+    longRegion: longRegion
     sharedImageGalleryName: sharedImageGallery.outputs.sharedImageGalleryName
+    storageAccountName: storageAccount.outputs.storageAccountName
+    imageScriptsContainerName: storageAccount.outputs.storageAccountBlobContainerName
   }  
 }

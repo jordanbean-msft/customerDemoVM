@@ -1,0 +1,346 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.4.63.48766",
+      "templateHash": "12913613355218627535"
+    }
+  },
+  "parameters": {
+    "appName": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "longRegion": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string"
+    }
+  },
+  "functions": [],
+  "variables": {
+    "longName": "[format('{0}-{1}-{2}', parameters('appName'), parameters('region'), parameters('environment'))]",
+    "shortName": "[format('{0}{1}{2}', parameters('appName'), parameters('region'), parameters('environment'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "sharedImageGalleryDeploy",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "longName": {
+            "value": "[variables('longName')]"
+          },
+          "shortName": {
+            "value": "[variables('shortName')]"
+          },
+          "storageAccountName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storageAccountDeploy'), '2019-10-01').outputs.storageAccountName.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.63.48766",
+              "templateHash": "1748261462449527254"
+            }
+          },
+          "parameters": {
+            "longName": {
+              "type": "string"
+            },
+            "shortName": {
+              "type": "string"
+            },
+            "storageAccountName": {
+              "type": "string"
+            }
+          },
+          "functions": [],
+          "variables": {
+            "contributorRoleDefinition": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c', subscription().subscriptionId)]",
+            "storageBlobDataReaderRoleDefinition": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/2a2b9908-6ea1-4ae2-8e65-a410df84e7d1', subscription().subscriptionId)]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Compute/galleries",
+              "apiVersion": "2020-09-30",
+              "name": "[format('sig{0}', parameters('shortName'))]",
+              "location": "[resourceGroup().location]"
+            },
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2018-11-30",
+              "name": "[format('mi-{0}', parameters('longName'))]",
+              "location": "[resourceGroup().location]"
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2021-04-01-preview",
+              "name": "[guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('mi-{0}', parameters('longName'))), variables('contributorRoleDefinition'))]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('mi-{0}', parameters('longName')))).principalId]",
+                "roleDefinitionId": "[variables('contributorRoleDefinition')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('mi-{0}', parameters('longName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2021-04-01-preview",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('storageAccountName'))]",
+              "name": "[guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('mi-{0}', parameters('longName'))), variables('storageBlobDataReaderRoleDefinition'))]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('mi-{0}', parameters('longName')))).principalId]",
+                "roleDefinitionId": "[variables('storageBlobDataReaderRoleDefinition')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('mi-{0}', parameters('longName')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "sharedImageGalleryName": {
+              "type": "string",
+              "value": "[format('sig{0}', parameters('shortName'))]"
+            },
+            "imageBuilderUserAssignedIdentityName": {
+              "type": "string",
+              "value": "[format('mi-{0}', parameters('longName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'storageAccountDeploy')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "storageAccountDeploy",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "shortName": {
+            "value": "[parameters('appName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.63.48766",
+              "templateHash": "16512149630870990902"
+            }
+          },
+          "parameters": {
+            "shortName": {
+              "type": "string"
+            }
+          },
+          "functions": [],
+          "variables": {
+            "blobContainerName": "imagescripts"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2021-04-01",
+              "name": "[toLower(format('sa{0}', parameters('shortName')))]",
+              "location": "[resourceGroup().location]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "BlobStorage",
+              "properties": {
+                "accessTier": "Hot"
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2021-04-01",
+              "name": "[format('{0}/default/{1}', toLower(format('sa{0}', parameters('shortName'))), variables('blobContainerName'))]",
+              "properties": {},
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', toLower(format('sa{0}', parameters('shortName'))))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "storageAccountName": {
+              "type": "string",
+              "value": "[toLower(format('sa{0}', parameters('shortName')))]"
+            },
+            "storageAccountBlobContainerName": {
+              "type": "string",
+              "value": "[format('{0}/default/{1}', toLower(format('sa{0}', parameters('shortName'))), variables('blobContainerName'))]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "applicationImageTemplate",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "imageBuilderUserAssignedIdentityName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'sharedImageGalleryDeploy'), '2019-10-01').outputs.imageBuilderUserAssignedIdentityName.value]"
+          },
+          "longName": {
+            "value": "[variables('longName')]"
+          },
+          "longRegion": {
+            "value": "[parameters('longRegion')]"
+          },
+          "sharedImageGalleryName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'sharedImageGalleryDeploy'), '2019-10-01').outputs.sharedImageGalleryName.value]"
+          },
+          "storageAccountName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storageAccountDeploy'), '2019-10-01').outputs.storageAccountName.value]"
+          },
+          "imageScriptsContainerName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storageAccountDeploy'), '2019-10-01').outputs.storageAccountBlobContainerName.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.63.48766",
+              "templateHash": "11794672916619918881"
+            }
+          },
+          "parameters": {
+            "longName": {
+              "type": "string"
+            },
+            "longRegion": {
+              "type": "string"
+            },
+            "imageBuilderUserAssignedIdentityName": {
+              "type": "string"
+            },
+            "sharedImageGalleryName": {
+              "type": "string"
+            },
+            "storageAccountName": {
+              "type": "string"
+            },
+            "imageScriptsContainerName": {
+              "type": "string"
+            },
+            "baseTime": {
+              "type": "string",
+              "defaultValue": "[utcNow('u')]"
+            }
+          },
+          "functions": [],
+          "variables": {
+            "demoApplicationImageDefinitionName": "img-demoApp",
+            "imageScriptsContainerSasProperties": {
+              "signedServices": "b",
+              "signedPermission": "r",
+              "signedExpiry": "[dateTimeAdd(parameters('baseTime'), 'P30D')]",
+              "signedResourceTypes": "o"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Compute/galleries/images",
+              "apiVersion": "2020-09-30",
+              "name": "[format('{0}/{1}', parameters('sharedImageGalleryName'), variables('demoApplicationImageDefinitionName'))]",
+              "location": "[resourceGroup().location]",
+              "properties": {
+                "osType": "Windows",
+                "osState": "Generalized",
+                "identifier": {
+                  "offer": "DemoApp",
+                  "publisher": "DemoApp_Inc",
+                  "sku": "1.0.0"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.VirtualMachineImages/imageTemplates",
+              "apiVersion": "2020-02-14",
+              "name": "[format('it-{0}', parameters('longName'))]",
+              "location": "[resourceGroup().location]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('imageBuilderUserAssignedIdentityName'))]": {}
+                }
+              },
+              "properties": {
+                "vmProfile": {
+                  "osDiskSizeGB": 0
+                },
+                "source": {
+                  "type": "PlatformImage",
+                  "publisher": "MicrosoftWindowsServer",
+                  "offer": "WindowsServer",
+                  "sku": "2019-Datacenter",
+                  "version": "latest"
+                },
+                "customize": [
+                  {
+                    "type": "PowerShell",
+                    "name": "InstallIIS",
+                    "runElevated": true,
+                    "scriptUri": "[format('https://{0}.{1}/{2}/installIIS.ps1', parameters('storageAccountName'), environment().suffixes.storage, parameters('imageScriptsContainerName'))]",
+                    "sha256Checksum": "B2302C694E02800D1C489430534AD710A418486C059584FDE96E3CAD64893C51"
+                  }
+                ],
+                "distribute": [
+                  {
+                    "type": "SharedImage",
+                    "galleryImageId": "[resourceId('Microsoft.Compute/galleries/images', split(format('{0}/{1}', parameters('sharedImageGalleryName'), variables('demoApplicationImageDefinitionName')), '/')[0], split(format('{0}/{1}', parameters('sharedImageGalleryName'), variables('demoApplicationImageDefinitionName')), '/')[1])]",
+                    "runOutputName": "runOutput",
+                    "replicationRegions": [
+                      "[parameters('longRegion')]"
+                    ]
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Compute/galleries/images', split(format('{0}/{1}', parameters('sharedImageGalleryName'), variables('demoApplicationImageDefinitionName')), '/')[0], split(format('{0}/{1}', parameters('sharedImageGalleryName'), variables('demoApplicationImageDefinitionName')), '/')[1])]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'sharedImageGalleryDeploy')]",
+        "[resourceId('Microsoft.Resources/deployments', 'storageAccountDeploy')]"
+      ]
+    }
+  ]
+}

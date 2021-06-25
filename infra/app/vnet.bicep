@@ -44,13 +44,30 @@ resource applicationNsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
   properties: {
     securityRules: [
       {
+        name: 'AllowFrontDoorInbound'
+        properties: {
+          access: 'Allow'
+          description: 'Allow FrontDoor inbound'
+          direction: 'Inbound'
+          protocol: 'Tcp'
+          priority: 100
+          sourceAddressPrefix: 'Internet'
+          sourcePortRange: '*'
+          destinationAddressPrefix: appSubnetAddressPrefix
+          destinationPortRanges: [
+            '80'
+            '443'
+          ]
+        }
+      }
+      {
         name: 'AllowBastionInbound'
         properties: {
           access: 'Allow'
           description: 'Allow from Bastion subnet'
           direction: 'Inbound'
           protocol: 'Tcp'
-          priority: 100
+          priority: 150
           sourceAddressPrefix: azureBastionSubnetAddressPrefix
           sourcePortRange: '*'
           destinationAddressPrefix: appSubnetAddressPrefix

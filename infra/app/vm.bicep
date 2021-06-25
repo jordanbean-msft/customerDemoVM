@@ -7,11 +7,20 @@ param adminUsername string
 @secure()
 param adminPassword string
 param timeZone string
+param sharedImageGalleryName string
+param demoApplicationImageDefinitionName string
+param demoApplicationImageVersion string
+param loadBalancerName string
+param loadBalancerBackendAddressPoolName string
 
 var fullyQualifiedApplicationSubnetName = '${vNetName}/${applicationSubnetName}'
 
 resource applicationSubnet 'Microsoft.Network/virtualNetworks/subnets@2021-02-01' existing = {
   name: fullyQualifiedApplicationSubnetName
+}
+
+resource loadBalancerBackendAddressPool 'Microsoft.Network/loadBalancers/backendAddressPools@2021-02-01' existing = {
+  name: '${loadBalancerName}/${loadBalancerBackendAddressPoolName}'
 }
 
 resource nic 'Microsoft.Network/networkInterfaces@2021-02-01' = {
@@ -25,10 +34,23 @@ resource nic 'Microsoft.Network/networkInterfaces@2021-02-01' = {
           subnet: {
             id: applicationSubnet.id
           }
+          loadBalancerBackendAddressPools: [
+            {
+              id: loadBalancerBackendAddressPool.id
+            }
+          ]
         }
       }
     ]
   }
+}
+
+resource sharedImageGallery 'Microsoft.Compute/galleries@2020-09-30' existing = {
+  name: sharedImageGalleryName  
+}
+
+resource vmImage 'Microsoft.Compute/galleries/images/versions@2020-09-30' existing = {
+  name: '${sharedImageGallery.name}/${demoApplicationImageDefinitionName}/${demoApplicationImageVersion}'
 }
 
 resource vm 'Microsoft.Compute/virtualMachines@2021-03-01' = {
@@ -50,10 +72,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2021-03-01' = {
     }
     storageProfile: {
       imageReference: {
-        offer: 'WindowsServer'
-        publisher: 'MicrosoftWindowsServer'
-        sku: '2019-Datacenter'
-        version: 'latest'
+        id: vmImage.id
       }
       osDisk: {
         osType: 'Windows'

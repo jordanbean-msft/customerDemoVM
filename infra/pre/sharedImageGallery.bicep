@@ -1,5 +1,6 @@
 param longName string
 param shortName string
+param storageAccountName string
 
 resource sharedImageGallery 'Microsoft.Compute/galleries@2020-09-30' = {
   name: 'sig${shortName}'
@@ -40,7 +41,7 @@ resource imageBuilderUserAssignedIdentity 'Microsoft.ManagedIdentity/userAssigne
 
 var contributorRoleDefinition = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c'
 
-resource imageBuilderUserAssignedIdentityRoleAssignment 'Microsoft.Authorization/roleAssignments@2021-04-01-preview' = {
+resource imageBuilderUserAssignedIdentityContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2021-04-01-preview' = {
   name: guid(imageBuilderUserAssignedIdentity.id, contributorRoleDefinition)
   properties: {
     principalId: imageBuilderUserAssignedIdentity.properties.principalId
@@ -48,6 +49,23 @@ resource imageBuilderUserAssignedIdentityRoleAssignment 'Microsoft.Authorization
     roleDefinitionId: contributorRoleDefinition
   } 
 }
+
+var storageBlobDataReaderRoleDefinition = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/2a2b9908-6ea1-4ae2-8e65-a410df84e7d1'
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2021-04-01' existing = {
+  name: storageAccountName
+}
+
+resource imageBuilderUserAssignedIdentityStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2021-04-01-preview' = {
+  name: guid(imageBuilderUserAssignedIdentity.id, storageBlobDataReaderRoleDefinition)
+  scope: storageAccount
+  properties: {
+    principalId: imageBuilderUserAssignedIdentity.properties.principalId
+    //roleDefinitionId: imageBuilderServiceImageCreationRole.id
+    roleDefinitionId: storageBlobDataReaderRoleDefinition
+  } 
+}
+
 
 output sharedImageGalleryName string = sharedImageGallery.name
 output imageBuilderUserAssignedIdentityName string = imageBuilderUserAssignedIdentity.name

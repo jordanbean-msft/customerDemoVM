@@ -1,7 +1,10 @@
 param longName string
-param region string
+param longRegion string
 param imageBuilderUserAssignedIdentityName string
 param sharedImageGalleryName string
+param storageAccountName string
+param imageScriptsContainerName string
+param baseTime string = utcNow('u')
 
 resource imageBuilderUserAssignedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' existing = {
   name: imageBuilderUserAssignedIdentityName
@@ -27,6 +30,13 @@ resource demoApplicationImageDefinition 'Microsoft.Compute/galleries/images@2020
   }
 }
 
+var imageScriptsContainerSasProperties = {
+  signedServices: 'b'
+  signedPermission: 'r'
+  signedExpiry: dateTimeAdd(baseTime, 'P30D')
+  signedResourceTypes: 'o'
+}
+
 resource applicationImageTemplate 'Microsoft.VirtualMachineImages/imageTemplates@2020-02-14' = {
   name: 'it-${longName}'
   location: resourceGroup().location
@@ -38,7 +48,7 @@ resource applicationImageTemplate 'Microsoft.VirtualMachineImages/imageTemplates
   }
   properties: {
     vmProfile: {
-      osDiskSizeGB: 100
+      osDiskSizeGB: 0
     }
     source: {
       type: 'PlatformImage'
@@ -50,21 +60,18 @@ resource applicationImageTemplate 'Microsoft.VirtualMachineImages/imageTemplates
     customize: [
       {
         type: 'PowerShell'
-        name: 'settingUpMgmtAgtPath'
-        runElevated: false
-        inline: [
-          'mkdir c:\\buildActions'
-          'echo Azure-Image-Builder-Was-Here  > c:\\buildActions\\buildActionsOutput.txt'
-        ]
+        name: 'InstallIIS'
+        runElevated: true
+        scriptUri: 'https://${storageAccountName}.blob.${environment().suffixes.storage}/${imageScriptsContainerName}/installIIS.ps1'
       }
     ]
     distribute: [
       {
         type: 'SharedImage'
-        galleryImageId: '/subscriptions/${subscription().subscriptionId}/resourceGroups/${resourceGroup().name}/providers/Microsoft.Compute/galleries/${sharedImageGallery.name}/images/${demoApplicationImageDefinitionName}'
+        galleryImageId: demoApplicationImageDefinition.id
         runOutputName: 'runOutput'
         replicationRegions: [
-          region
+          longRegion
         ]
       }
     ]
