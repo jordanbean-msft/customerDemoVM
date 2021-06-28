@@ -77,20 +77,6 @@ resource applicationNsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
           ]
         }
       }
-      {
-        name: 'DenyAllOthersInbound'
-        properties: {
-          access: 'Deny'
-          description: 'Deny all others'
-          direction: 'Inbound'
-          protocol: '*'
-          priority: 200
-          sourceAddressPrefix: '*' 
-          sourcePortRange: '*'
-          destinationAddressPrefix: 'VirtualNetwork'
-          destinationPortRange: '*'
-        }
-      }
     ]
   }
 }

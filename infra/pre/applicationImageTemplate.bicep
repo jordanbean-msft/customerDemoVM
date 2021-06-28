@@ -64,6 +64,18 @@ resource applicationImageTemplate 'Microsoft.VirtualMachineImages/imageTemplates
         runElevated: true
         scriptUri: 'https://${storageAccountName}.blob.${environment().suffixes.storage}/${imageScriptsContainerName}/installIIS.ps1'
       }
+      {
+        type: 'WindowsRestart'
+        restartCommand: 'shutdown /r /f /t 0'
+        restartCheckCommand: 'echo Azure-Image-Builder-Restarted-the-VM  > c:\\buildArtifacts\\azureImageBuilderRestart.txt'
+        restartTimeout: '5m'
+      }
+      { 
+        type: 'File'
+        name: 'index.html'
+        sourceUri: 'https://${storageAccountName}.blob.${environment().suffixes.storage}/${imageScriptsContainerName}/index.html'
+        destination: 'C:\\WebSites\\ApplicationWebSite'
+      }
     ]
     distribute: [
       {

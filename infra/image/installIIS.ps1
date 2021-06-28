@@ -1,6 +1,6 @@
 Set-ExecutionPolicy Bypass -Scope Process
 
-Write-Verbose "Enabling required Windows Features..."
+Write-Host "Enabling required Windows Features..."
 
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServer
@@ -36,26 +36,21 @@ Enable-WindowsOptionalFeature -Online -FeatureName IIS-HttpCompressionStatic
 
 Enable-WindowsOptionalFeature -Online -FeatureName IIS-ASPNET45
 
-Write-Verbose "Enabled required Windows Features"
+Write-Host "Enabled required Windows Features"
 
-Import-Module WebAdministration
+Import-Module IISAdministration
 
-$webAppPoolName = "ApplicationWebSiteAppPool"
-
-New-WebAppPool -Name $webAppPoolName -Force
-
-$appPool = Get-Item -Name $webAppPoolName
-$appPool.processModel.identityType = "NetworkService"
-$appPool.enable32BitAppOnWin64 = 1
-$appPool | Set-Item
-
+$path = "C:\WebSites\ApplicationWebSite\"
 $webSiteName = "ApplicationWebSite"
 
-md "c:\Web Sites\$webSiteName"
+Write-Host "Creating website directory $path..."
 
-# All on one line
-$site = New-WebSite -Name $webSiteName `
-										-PhysicalPath "c:\Web Sites\$webSiteName" `
-										-HostHeader "home.application.com" `
-										-ApplicationPool $webAppPoolName `
-										-Force
+New-Item -ItemType Directory -Name $webSiteName -Path $path
+
+Write-Host "Created website directory $path"
+
+Write-Host "Creating new WebSite $webSiteName..."
+
+New-IISSite -Name $webSiteName -PhysicalPath $path -BindingInformation "*:8088:"
+
+Write-Host "Created new WebSite $webSiteName"

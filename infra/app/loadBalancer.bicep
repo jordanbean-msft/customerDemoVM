@@ -68,6 +68,9 @@ resource loadBalancer 'Microsoft.Network/loadBalancers@2021-02-01' = {
           }
           frontendPort: 80
           backendPort: 80
+          disableOutboundSnat: true
+          enableFloatingIP: false
+          enableTcpReset: true
         }
       }
       {
@@ -86,6 +89,9 @@ resource loadBalancer 'Microsoft.Network/loadBalancers@2021-02-01' = {
           }
           frontendPort: 443
           backendPort: 443
+          disableOutboundSnat: true
+          enableFloatingIP: false
+          enableTcpReset: true
         }
       }
     ]
@@ -98,6 +104,25 @@ resource loadBalancer 'Microsoft.Network/loadBalancers@2021-02-01' = {
           intervalInSeconds: 5
           numberOfProbes: 2
         }
+      }
+    ]
+    outboundRules: [
+       {
+          name: 'loadBalancerOutboundRule'
+          properties: {
+              allocatedOutboundPorts: 10000
+              protocol: 'All'
+              enableTcpReset: false
+              idleTimeoutInMinutes: 15
+              backendAddressPool: {
+                  id: resourceId('Microsoft.Network/loadBalancers/backendAddressPools', loadBalancerName, loadBalancerBackEndName)
+              }
+              frontendIPConfigurations: [
+                  {
+                      id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', loadBalancerName, loadBalancerFrontEndName)
+                  }
+              ]
+          }
       }
     ]
   }
