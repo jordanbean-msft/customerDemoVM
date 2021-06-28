@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.4.63.48766",
-      "templateHash": "2040858720987599085"
+      "templateHash": "14863555571129338485"
     }
   },
   "parameters": {
@@ -35,6 +35,15 @@
     },
     "demoApplicationImageVersion": {
       "type": "string"
+    },
+    "centralStorageAccountName": {
+      "type": "string"
+    },
+    "imageScriptsContainerName": {
+      "type": "string"
+    },
+    "centralResourceGroupName": {
+      "type": "string"
     }
   },
   "functions": [],
@@ -63,7 +72,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.4.63.48766",
-              "templateHash": "10287276952046770250"
+              "templateHash": "17955309463854209960"
             }
           },
           "parameters": {
@@ -124,6 +133,23 @@
               "properties": {
                 "securityRules": [
                   {
+                    "name": "AllowFrontDoorInbound",
+                    "properties": {
+                      "access": "Allow",
+                      "description": "Allow FrontDoor inbound",
+                      "direction": "Inbound",
+                      "protocol": "Tcp",
+                      "priority": 100,
+                      "sourceAddressPrefix": "Internet",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "[variables('appSubnetAddressPrefix')]",
+                      "destinationPortRanges": [
+                        "80",
+                        "443"
+                      ]
+                    }
+                  },
+                  {
                     "name": "AllowBastionInbound",
                     "properties": {
                       "access": "Allow",
@@ -138,20 +164,6 @@
                         "22",
                         "3389"
                       ]
-                    }
-                  },
-                  {
-                    "name": "DenyAllOthersInbound",
-                    "properties": {
-                      "access": "Deny",
-                      "description": "Deny all others",
-                      "direction": "Inbound",
-                      "protocol": "*",
-                      "priority": 200,
-                      "sourceAddressPrefix": "*",
-                      "sourcePortRange": "*",
-                      "destinationAddressPrefix": "VirtualNetwork",
-                      "destinationPortRange": "*"
                     }
                   }
                 ]
@@ -446,6 +458,15 @@
           },
           "loadBalancerBackendAddressPoolName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'loadBalancerDeploy'), '2019-10-01').outputs.loadBalancerBackendAddressPoolName.value]"
+          },
+          "centralStorageAccountName": {
+            "value": "[parameters('centralStorageAccountName')]"
+          },
+          "imageScriptsContainerName": {
+            "value": "[parameters('imageScriptsContainerName')]"
+          },
+          "centralResourceGroupName": {
+            "value": "[parameters('centralResourceGroupName')]"
           }
         },
         "template": {
@@ -455,7 +476,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.4.63.48766",
-              "templateHash": "13853485322699583001"
+              "templateHash": "6378290820448009913"
             }
           },
           "parameters": {
@@ -494,11 +515,21 @@
             },
             "loadBalancerBackendAddressPoolName": {
               "type": "string"
+            },
+            "centralStorageAccountName": {
+              "type": "string"
+            },
+            "imageScriptsContainerName": {
+              "type": "string"
+            },
+            "centralResourceGroupName": {
+              "type": "string"
             }
           },
           "functions": [],
           "variables": {
-            "fullyQualifiedApplicationSubnetName": "[format('{0}/{1}', parameters('vNetName'), parameters('applicationSubnetName'))]"
+            "fullyQualifiedApplicationSubnetName": "[format('{0}/{1}', parameters('vNetName'), parameters('applicationSubnetName'))]",
+            "configureWebsiteFilename": "customizeVM.ps1"
           },
           "resources": [
             {
@@ -525,10 +556,22 @@
               }
             },
             {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2018-11-30",
+              "name": "[format('mi-vm-{0}', parameters('longName'))]",
+              "location": "[resourceGroup().location]"
+            },
+            {
               "type": "Microsoft.Compute/virtualMachines",
               "apiVersion": "2021-03-01",
               "name": "[format('vm-{0}', parameters('longName'))]",
               "location": "[resourceGroup().location]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('mi-vm-{0}', parameters('longName')))]": {}
+                }
+              },
               "properties": {
                 "hardwareProfile": {
                   "vmSize": "Standard_B2ms"
@@ -572,10 +615,12 @@
                   "bootDiagnostics": {
                     "enabled": true
                   }
-                }
+                },
+                "userData": "[base64(parameters('customerName'))]"
               },
               "dependsOn": [
-                "[resourceId('Microsoft.Network/networkInterfaces', format('nic-{0}', parameters('longName')))]"
+                "[resourceId('Microsoft.Network/networkInterfaces', format('nic-{0}', parameters('longName')))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('mi-vm-{0}', parameters('longName')))]"
               ]
             },
             {
@@ -594,6 +639,95 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Compute/virtualMachines', format('vm-{0}', parameters('longName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Compute/virtualMachines/extensions",
+              "apiVersion": "2021-03-01",
+              "name": "[format('{0}/configureWebApp', format('vm-{0}', parameters('longName')))]",
+              "location": "[resourceGroup().location]",
+              "properties": {
+                "publisher": "Microsoft.Compute",
+                "type": "CustomScriptExtension",
+                "typeHandlerVersion": "1.10",
+                "autoUpgradeMinorVersion": true,
+                "protectedSettings": {
+                  "commandToExecute": "[format('powershell.exe -ExecutionPolicy Unrestricted -File {0} -PathToWebSite C:\\WebSites\\ApplicationWebSite\\index.html', variables('configureWebsiteFilename'))]",
+                  "managedIdentity": {
+                    "clientId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('mi-vm-{0}', parameters('longName')))).clientId]"
+                  },
+                  "fileUris": [
+                    "[format('https://{0}.blob.{1}/{2}/{3}', parameters('centralStorageAccountName'), environment().suffixes.storage, parameters('imageScriptsContainerName'), variables('configureWebsiteFilename'))]"
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('centralResourceGroupName')), 'Microsoft.Resources/deployments', 'assignStorageBlobDataReaderDeploy')]",
+                "[resourceId('Microsoft.Compute/virtualMachines', format('vm-{0}', parameters('longName')))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('mi-vm-{0}', parameters('longName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2019-10-01",
+              "name": "assignStorageBlobDataReaderDeploy",
+              "resourceGroup": "[parameters('centralResourceGroupName')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "centralStorageAccountName": {
+                    "value": "[parameters('centralStorageAccountName')]"
+                  },
+                  "vmUserAssignedIdentityName": {
+                    "value": "[format('mi-vm-{0}', parameters('longName'))]"
+                  },
+                  "targetResourceGroupName": {
+                    "value": "[resourceGroup().name]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.4.63.48766",
+                      "templateHash": "7874877085459824967"
+                    }
+                  },
+                  "parameters": {
+                    "centralStorageAccountName": {
+                      "type": "string"
+                    },
+                    "vmUserAssignedIdentityName": {
+                      "type": "string"
+                    },
+                    "targetResourceGroupName": {
+                      "type": "string"
+                    }
+                  },
+                  "functions": [],
+                  "variables": {
+                    "storageBlobDataReaderRoleDefinition": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/2a2b9908-6ea1-4ae2-8e65-a410df84e7d1', subscription().subscriptionId)]"
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2021-04-01-preview",
+                      "name": "[guid(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('targetResourceGroupName')), 'Microsoft.ManagedIdentity/userAssignedIdentities', parameters('vmUserAssignedIdentityName')), parameters('targetResourceGroupName'), variables('storageBlobDataReaderRoleDefinition'))]",
+                      "properties": {
+                        "principalId": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('targetResourceGroupName')), 'Microsoft.ManagedIdentity/userAssignedIdentities', parameters('vmUserAssignedIdentityName')), '2018-11-30').principalId]",
+                        "roleDefinitionId": "[variables('storageBlobDataReaderRoleDefinition')]"
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('mi-vm-{0}', parameters('longName')))]"
               ]
             }
           ]
@@ -631,7 +765,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.4.63.48766",
-              "templateHash": "7128892796960274326"
+              "templateHash": "8320397242381429842"
             }
           },
           "parameters": {
@@ -708,7 +842,10 @@
                         "id": "[resourceId('Microsoft.Network/loadBalancers/probes', variables('loadBalancerName'), variables('loadBalancerProbeName'))]"
                       },
                       "frontendPort": 80,
-                      "backendPort": 80
+                      "backendPort": 80,
+                      "disableOutboundSnat": true,
+                      "enableFloatingIP": false,
+                      "enableTcpReset": true
                     }
                   },
                   {
@@ -726,7 +863,10 @@
                         "id": "[resourceId('Microsoft.Network/loadBalancers/probes', variables('loadBalancerName'), variables('loadBalancerProbeName'))]"
                       },
                       "frontendPort": 443,
-                      "backendPort": 443
+                      "backendPort": 443,
+                      "disableOutboundSnat": true,
+                      "enableFloatingIP": false,
+                      "enableTcpReset": true
                     }
                   }
                 ],
@@ -738,6 +878,25 @@
                       "port": 80,
                       "intervalInSeconds": 5,
                       "numberOfProbes": 2
+                    }
+                  }
+                ],
+                "outboundRules": [
+                  {
+                    "name": "loadBalancerOutboundRule",
+                    "properties": {
+                      "allocatedOutboundPorts": 10000,
+                      "protocol": "All",
+                      "enableTcpReset": false,
+                      "idleTimeoutInMinutes": 15,
+                      "backendAddressPool": {
+                        "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', variables('loadBalancerName'), variables('loadBalancerBackEndName'))]"
+                      },
+                      "frontendIPConfigurations": [
+                        {
+                          "id": "[resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', variables('loadBalancerName'), variables('loadBalancerFrontEndName'))]"
+                        }
+                      ]
                     }
                   }
                 ]
@@ -791,7 +950,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.4.63.48766",
-              "templateHash": "17584213455830372007"
+              "templateHash": "575911359956219633"
             }
           },
           "parameters": {
@@ -815,15 +974,18 @@
               "type": "Microsoft.Network/frontDoors",
               "apiVersion": "2020-05-01",
               "name": "[variables('frontDoorName')]",
-              "location": "Global",
+              "location": "global",
               "properties": {
                 "enabledState": "Enabled",
                 "frontendEndpoints": [
                   {
                     "name": "[variables('frontDoorFrontEndName')]",
                     "properties": {
-                      "hostName": "[format('{0}.azurefd.net', parameters('longName'))]",
-                      "sessionAffinityEnabledState": "Disabled"
+                      "hostName": "[format('{0}.azurefd.net', variables('frontDoorName'))]",
+                      "sessionAffinityEnabledState": "Disabled",
+                      "webApplicationFirewallPolicyLink": {
+                        "id": "[resourceId('Microsoft.Network/FrontDoorWebApplicationFirewallPolicies', 'frontDoorWafPolicy')]"
+                      }
                     }
                   }
                 ],
@@ -837,7 +999,7 @@
                           "backendHostHeader": "[reference(resourceId('Microsoft.Network/publicIPAddresses', parameters('loadBalancerPublicIpAddressName')), '2021-02-01').ipAddress]",
                           "httpPort": 80,
                           "httpsPort": 443,
-                          "weight": 50,
+                          "weight": 100,
                           "priority": 1,
                           "enabledState": "Enabled"
                         }
@@ -888,9 +1050,6 @@
                       "patternsToMatch": [
                         "/*"
                       ],
-                      "webApplicationFirewallPolicyLink": {
-                        "id": "[resourceId('Microsoft.Network/FrontDoorWebApplicationFirewallPolicies', 'frontDoorWafPolicy')]"
-                      },
                       "routeConfiguration": {
                         "@odata.type": "#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration",
                         "forwardingProtocol": "MatchRequest",
@@ -912,7 +1071,7 @@
               "name": "frontDoorWafPolicy",
               "location": "[resourceGroup().location]",
               "sku": {
-                "name": "Premium_AzureFrontDoor"
+                "name": "Classic_AzureFrontDoor"
               },
               "properties": {
                 "policySettings": {

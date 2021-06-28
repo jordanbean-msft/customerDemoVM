@@ -40,7 +40,7 @@ Write-Host "Enabled required Windows Features"
 
 Import-Module IISAdministration
 
-$path = "C:\WebSites\ApplicationWebSite\"
+$path = "C:\WebSites\"
 $webSiteName = "ApplicationWebSite"
 
 Write-Host "Creating website directory $path..."

@@ -9,6 +9,9 @@ param vmTimeZone string
 param sharedImageGalleryName string
 param demoApplicationImageDefinitionName string
 param demoApplicationImageVersion string
+param centralStorageAccountName string
+param imageScriptsContainerName string
+param centralResourceGroupName string
 
 var longName = '${customerName}-${region}-${environment}'
 
@@ -43,6 +46,9 @@ module vmModule 'vm.bicep' = {
     demoApplicationImageVersion: demoApplicationImageVersion
     loadBalancerName: loadBalancerModule.outputs.loadBalancerName
     loadBalancerBackendAddressPoolName: loadBalancerModule.outputs.loadBalancerBackendAddressPoolName
+    centralStorageAccountName: centralStorageAccountName
+    imageScriptsContainerName: imageScriptsContainerName
+    centralResourceGroupName: centralResourceGroupName
   }
 }
 

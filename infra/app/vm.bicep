@@ -12,6 +12,9 @@ param demoApplicationImageDefinitionName string
 param demoApplicationImageVersion string
 param loadBalancerName string
 param loadBalancerBackendAddressPoolName string
+param centralStorageAccountName string
+param imageScriptsContainerName string
+param centralResourceGroupName string
 
 var fullyQualifiedApplicationSubnetName = '${vNetName}/${applicationSubnetName}'
 
@@ -53,9 +56,20 @@ resource vmImage 'Microsoft.Compute/galleries/images/versions@2020-09-30' existi
   name: '${sharedImageGallery.name}/${demoApplicationImageDefinitionName}/${demoApplicationImageVersion}'
 }
 
+resource vmUserAssignedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
+  name: 'mi-vm-${longName}'
+  location: resourceGroup().location  
+}
+
 resource vm 'Microsoft.Compute/virtualMachines@2021-03-01' = {
   name: 'vm-${longName}'
   location: resourceGroup().location
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${vmUserAssignedIdentity.id}': {}
+    }
+  }
   properties: {
     hardwareProfile: {
       vmSize: 'Standard_B2ms'
@@ -100,7 +114,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2021-03-01' = {
         enabled: true
       }
     }
-    
+    userData: base64(customerName)
   }  
 }
 
@@ -111,9 +125,44 @@ resource vmAutoShutdown 'Microsoft.DevTestLab/schedules@2018-09-15' = {
     status: 'Enabled'
     taskType: 'ComputeVmShutdownTask'
     dailyRecurrence: {
-      time: '1700' 
+      time: '2000' 
     }
     timeZoneId: timeZone
     targetResourceId: vm.id
   } 
+}
+
+module assignStorageBlobDataReader 'assignStorageBlobDataReader.bicep' = {
+  name: 'assignStorageBlobDataReaderDeploy'
+  scope: resourceGroup(centralResourceGroupName)
+  params: {
+    centralStorageAccountName: centralStorageAccountName
+    vmUserAssignedIdentityName: vmUserAssignedIdentity.name
+    targetResourceGroupName: resourceGroup().name
+  }  
+}
+
+var configureWebsiteFilename = 'customizeVM.ps1'
+
+resource vmConfigureScriptExtension 'Microsoft.Compute/virtualMachines/extensions@2021-03-01' = {
+  name: '${vm.name}/configureWebApp'
+  location: resourceGroup().location
+  dependsOn: [
+    assignStorageBlobDataReader
+  ]
+  properties: {
+    publisher: 'Microsoft.Compute'
+    type: 'CustomScriptExtension'
+    typeHandlerVersion: '1.10'
+    autoUpgradeMinorVersion: true
+    protectedSettings: {
+      commandToExecute: 'powershell.exe -ExecutionPolicy Unrestricted -File ${configureWebsiteFilename} -PathToWebSite C:\\WebSites\\ApplicationWebSite\\index.html'
+      managedIdentity: {
+        clientId: vmUserAssignedIdentity.properties.clientId
+      }
+      fileUris: [
+        'https://${centralStorageAccountName}.blob.${environment().suffixes.storage}/${imageScriptsContainerName}/${configureWebsiteFilename}'
+      ]
+    }
+  }
 }

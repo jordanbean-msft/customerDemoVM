@@ -72,9 +72,9 @@ resource applicationImageTemplate 'Microsoft.VirtualMachineImages/imageTemplates
       }
       { 
         type: 'File'
-        name: 'index.html'
+        name: 'Download index.html'
         sourceUri: 'https://${storageAccountName}.blob.${environment().suffixes.storage}/${imageScriptsContainerName}/index.html'
-        destination: 'C:\\WebSites\\ApplicationWebSite'
+        destination: 'C:\\WebSites\\ApplicationWebSite\\index.html'
       }
     ]
     distribute: [
