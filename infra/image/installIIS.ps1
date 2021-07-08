@@ -40,6 +40,12 @@ Write-Host "Enabled required Windows Features"
 
 Import-Module IISAdministration
 
+Write-Host "Removing Default Web Site..."
+
+Remove-IISSite -Name "Default Web Site"
+
+Write-Host "Removed Default Web Site"
+
 $path = "C:\WebSites\"
 $webSiteName = "ApplicationWebSite"
 
@@ -51,6 +57,6 @@ Write-Host "Created website directory $path"
 
 Write-Host "Creating new WebSite $webSiteName..."
 
-New-IISSite -Name $webSiteName -PhysicalPath $path -BindingInformation "*:8088:"
+New-IISSite -Name $webSiteName -PhysicalPath $path -BindingInformation "*:80:"
 
 Write-Host "Created new WebSite $webSiteName"

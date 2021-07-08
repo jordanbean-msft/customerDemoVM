@@ -23,3 +23,17 @@ $newHtml = $originalHtml -replace "{webSiteName}", $customerName
 $newHtml | Set-Content -Path $pathToWebSite
 
 Write-Host "Configured WebSite $pathToWebSite with customer data for $customerName"
+
+Write-Host "Starting Windows Service W3SVC..."
+
+Start-Service -ServiceName "W3SVC"
+
+Write-Host "Started Windows Service W3SVC"
+
+Import-Module IISAdministration
+
+Write-Host "Starting WebSite ..."
+
+Start-IISSite -Name "ApplicationWebSite"
+
+Write-Host "Started WebSite"

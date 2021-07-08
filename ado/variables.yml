@@ -1,0 +1,7 @@
+parameters:
+  - name: adoScriptDirectoryName
+  - name: customerEnvironmentDirectoryName
+
+variables:
+  pathToAdoScriptDirectory: $(System.DefaultWorkingDirectory)/${{ parameters.adoScriptDirectoryName }}
+  pathToCustomerEnvironmentDirectory: $(System.DefaultWorkingDirectory)/${{ parameters.adoScriptDirectoryName }}/${{ parameters.customerEnvironmentDirectoryName }}

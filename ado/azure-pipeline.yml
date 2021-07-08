@@ -1,0 +1,42 @@
+name: CustomerDemoVM 
+variables:
+  - template: env/global.yml
+  - template: env/central.yml
+  - template: env/customer/dunderMifflin.yml
+  - template: variables.yml
+    parameters:
+      adoScriptDirectoryName: ${{ variables.adoScriptDirectoryName }}
+      customerEnvironmentDirectoryName: ${{ variables.customerEnvironmentDirectoryName }}
+trigger:
+  - main
+stages:
+  # - stage: GenerateCustomerNames
+  #   pool:
+  #     image: ubuntu-latest
+  #   jobs:
+  #     - job:
+  #       steps:
+  #         - task: Bash@3 
+  #           displayName: GenerateCustomerNames
+  #           inputs:
+  #             targetType: filePath
+  #             script: ${{ variables.adoScriptDirectory }}/generateCustomerNames.sh
+  #             arguments: -c ${{ variables.customerEnvironmentDirectoryName }}
+            
+  - stage: Customer_Deploy
+    jobs:
+    - deployment: Customer_Deploy
+      pool:
+        #name: ${{ variables.adoAgentPoolName }}
+        image: ubuntu-latest
+      environment: ${{ variables.customerName }}
+      variables:
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            - template: deploy.yml
+              parameters:
+                environmentName: ${{ variables.customerName }}
+                pathToAdoScriptDirectory: ${{ variables.pathToAdoScriptDirectory }}
+                serviceConnectionName: ${{ variables.serviceConnectionName }}

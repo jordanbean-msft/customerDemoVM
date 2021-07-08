@@ -1,0 +1,5 @@
+variables:
+  centralEnvironmentName: central
+  centralResourceGroupName: rg-appServicePerf-USSC-central
+  centralvNetName: vnet-central
+  centralAdoAgentSubnetName: adoAgentSubnet
