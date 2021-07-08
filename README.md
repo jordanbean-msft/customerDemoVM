@@ -22,10 +22,10 @@ The "ado" directory contains a sample Azure DevOps pipeline to deploy the applic
 
 ```powershell
 $params = @{ 
-appName="customerDemoVM"
-region="USSC"
-environment="central"
-longRegion="southcentralus"
+  appName="customerDemoVM"
+  region="USSC"
+  environment="central"
+  longRegion="southcentralus"
 }
 
 New-AzResourceGroupDeployment -ResourceGroupName rg-customerDemoVM-USSC-central -TemplateParameterObject $params -TemplateFile ./infra/pre/main.bicep -Verbose
@@ -41,18 +41,18 @@ New-AzResourceGroupDeployment -ResourceGroupName rg-customerDemoVM-USSC-central 
 
 ```powershell
 $params = @{ 
-customerName="DunderMifflin"
-region="USSC"
-environment="demo"
-vmAdminUsername="CHANGEME"
-vmAdminPassword="CHANGEME"
-vmTimeZone="Central Standard Time"
-sharedImageGalleryName="sigcustomerDemoVMUSSCcentral"
-demoApplicationImageDefinitionName="img-demoApp"
-demoApplicationImageVersion="0.24794.20250"
-centralStorageAccountName="sacustomerdemovm"
-imageScriptsContainerName="imagescripts"
-centralResourceGroupName="rg-customerDemoVM-USSC-central"
+  customerName="DunderMifflin"
+  region="USSC"
+  environment="demo"
+  vmAdminUsername="CHANGEME"
+  vmAdminPassword="CHANGEME"
+  vmTimeZone="Central Standard Time"
+  sharedImageGalleryName="sigcustomerDemoVMUSSCcentral"
+  demoApplicationImageDefinitionName="img-demoApp"
+  demoApplicationImageVersion="0.24794.20250"
+  centralStorageAccountName="sacustomerdemovm"
+  imageScriptsContainerName="imagescripts"
+  centralResourceGroupName="rg-customerDemoVM-USSC-central"
 }
 
 New-AzResourceGroupDeployment -ResourceGroupName rg-customerDemoVM-DunderMifflin-USSC-demo -TemplateParameterObject $params -TemplateFile ./infra/app/main.bicep -Verbose
