@@ -28,7 +28,7 @@ environment="central"
 longRegion="southcentralus"
 }
 
-New-AzResourceGroupDeployment -ResourceGroupName rg-customerDemoVM-USSC-central -TemplateParameterObject $params -TemplateFile ./main.bicep -Verbose
+New-AzResourceGroupDeployment -ResourceGroupName rg-customerDemoVM-USSC-central -TemplateParameterObject $params -TemplateFile ./infra/pre/main.bicep -Verbose
 ```
 
 ### Build the gold image
@@ -55,5 +55,5 @@ imageScriptsContainerName="imagescripts"
 centralResourceGroupName="rg-customerDemoVM-USSC-central"
 }
 
-New-AzResourceGroupDeployment -ResourceGroupName rg-customerDemoVM-DunderMifflin-USSC-demo -TemplateParameterObject $params -TemplateFile ./main.bicep -Verbose
+New-AzResourceGroupDeployment -ResourceGroupName rg-customerDemoVM-DunderMifflin-USSC-demo -TemplateParameterObject $params -TemplateFile ./infra/app/main.bicep -Verbose
 ```
